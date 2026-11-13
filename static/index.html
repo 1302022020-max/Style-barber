@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12203A">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/static/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<title>Corte Ideal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#12203A; --pole-red:#C8283A; --pole-blue:#2F5D8A; --paper:#EEF0F2; --ink:#1B2433; --mute:#5A6577; --line:#D3D8DF; --white:#fff;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:"Barlow",system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5;padding-bottom:env(safe-area-inset-bottom)}
+header{background:var(--navy);color:var(--paper);padding:calc(env(safe-area-inset-top) + 18px) 20px 18px}
+header h1{font-family:"Barlow Condensed",Impact,sans-serif;font-size:2.2rem;letter-spacing:.02em;margin:0;line-height:1}
+header p{margin:6px 0 0;color:#B9C3D3;font-size:.95rem}
+.pole{height:12px;background:repeating-linear-gradient(-45deg,var(--pole-red) 0 12px,var(--white) 12px 24px,var(--pole-blue) 24px 36px);background-size:51px 51px}
+.pole.busy{animation:spin .8s linear infinite}
+@keyframes spin{to{background-position:51px 0}}
+@media (prefers-reduced-motion:reduce){.pole.busy{animation:none}}
+main{max-width:560px;margin:0 auto;padding:18px 16px 40px}
+section{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+h2{font-family:"Barlow Condensed",Impact,sans-serif;font-size:1.4rem;margin:0 0 10px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+button,label.btn{font:600 1rem "Barlow",sans-serif;border:0;border-radius:8px;padding:12px 16px;cursor:pointer;background:var(--navy);color:var(--white);flex:1;text-align:center;min-width:140px}
+label.btn.alt{background:var(--paper);color:var(--navy);border:1px solid var(--line)}
+button:focus-visible,label.btn:focus-within,select:focus-visible{outline:3px solid var(--pole-blue);outline-offset:2px}
+input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+#stage{position:relative;margin-top:12px;display:none}
+#stage canvas{width:100%;border-radius:8px;display:block;background:#000}
+#status{margin:10px 0 0;color:var(--mute);font-size:.95rem;min-height:1.4em}
+#status.err{color:var(--pole-red)}
+.grid{display:grid;gap:12px}
+.field span{display:block;font-weight:600;margin-bottom:4px}
+select{width:100%;font:1rem "Barlow",sans-serif;padding:11px;border:1px solid var(--line);border-radius:8px;background:var(--white);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px}
+.chip{flex:none;min-width:0;padding:7px 12px;border-radius:999px;background:var(--paper);color:var(--navy);border:1px solid var(--line);font-size:.9rem}
+.chip[aria-pressed=true]{background:var(--pole-red);border-color:var(--pole-red);color:var(--white)}
+.shape{font-family:"Barlow Condensed",Impact,sans-serif;font-size:2rem;line-height:1;margin:0;text-transform:capitalize}
+.meta{color:var(--mute);font-size:.9rem;margin:6px 0 0}
+ul.cuts{list-style:none;padding:0;margin:12px 0 0}
+ul.cuts li{padding:10px 0;border-top:1px solid var(--line)}
+ul.cuts b{display:block}
+.tips{margin:12px 0 0;padding:12px;border-left:4px solid var(--pole-blue);background:var(--paper);border-radius:0 8px 8px 0}
+.tips p{margin:0 0 6px}.tips p:last-child{margin:0}
+.avoid{border-left-color:var(--pole-red)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Corte Ideal</h1>
+  <p>Foto del cliente, y te decimos qué corte le queda.</p>
+</header>
+<div class="pole" id="pole" aria-hidden="true"></div>
+
+<main>
+  <section>
+    <h2>Foto del cliente</h2>
+    <div class="btns">
+      <label class="btn">Tomar foto<input type="file" id="cam" accept="image/*" capture="user"></label>
+      <label class="btn alt">Elegir de galería<input type="file" id="gal" accept="image/*"></label>
+    </div>
+    <div id="stage"><canvas id="cv"></canvas></div>
+    <p id="status" role="status">Rostro de frente, sin gorra ni lentes, con buena luz.</p>
+  </section>
+
+  <section>
+    <h2>Cabello y cabeza</h2>
+    <div class="grid">
+      <label class="field"><span>Tipo de cabello</span>
+        <select id="hair">
+          <option value="liso">Liso</option>
+          <option value="ondulado">Ondulado</option>
+          <option value="rizado">Rizado</option>
+          <option value="crespo">Crespo / afro</option>
+        </select></label>
+      <label class="field"><span>Densidad y entradas</span>
+        <select id="dens">
+          <option value="normal">Normal</option>
+          <option value="entradas">Con entradas</option>
+          <option value="poco">Poco cabello arriba</option>
+        </select></label>
+      <label class="field"><span>Forma de la cabeza</span>
+        <select id="head">
+          <option value="redonda">Redonda</option>
+          <option value="alargada">Alargada (de frente a nuca)</option>
+          <option value="plana">Nuca plana</option>
+          <option value="angulosa">Angulosa / cuadrada</option>
+        </select></label>
+    </div>
+  </section>
+
+  <section id="res" class="hidden" aria-live="polite">
+    <h2>Recomendación</h2>
+    <p class="shape" id="shapeName"></p>
+    <p class="meta" id="shapeMeta"></p>
+    <div class="chips" id="chips" role="group" aria-label="Corregir la forma del rostro"></div>
+    <p class="meta">¿No coincide? Toca otra forma y se actualizan los cortes.</p>
+    <ul class="cuts" id="cuts"></ul>
+    <div class="tips" id="tips"></div>
+    <div class="tips avoid" id="avoid"></div>
+  </section>
+</main>
+
+<script type="module">
+import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm";
+
+const VER = "0.10.14";
+const $ = id => document.getElementById(id);
+const status = (t, err=false) => { $("status").textContent = t; $("status").className = err ? "err" : ""; };
+const busy = on => $("pole").classList.toggle("busy", on);
+
+/* ---------- Recomendaciones (edítalas con los cortes de tu barbería) ---------- */
+const CORTES = {
+  ovalado: { d:"Proporciones equilibradas: casi todo le funciona.",
+    cuts:[["Fade medio con textura arriba","Mantiene el equilibrio natural del rostro."],
+          ["Pompadour clásico","Realza la simetría sin recargar."],
+          ["Side part clásico","Limpio y versátil para el día a día."],
+          ["Crop francés","Marca el frente y no exige mucho peinado."]],
+    avoid:"Flequillos muy pesados que tapen toda la frente." },
+  redondo: { d:"Cara casi tan ancha como larga, líneas suaves.",
+    cuts:[["Fade alto con quiff","El volumen arriba y los lados cortos alargan el rostro."],
+          ["Pompadour con fade","Suma altura y define la silueta."],
+          ["Undercut con peinado hacia atrás","Crea ángulos donde la cara es redondeada."],
+          ["Texturizado hacia arriba","Eleva la forma y quita peso a los lados."]],
+    avoid:"Lados con volumen y flequillos rectos y cortos: ensanchan más la cara." },
+  cuadrado: { d:"Mandíbula marcada y frente ancha.",
+    cuts:[["Crew cut con fade bajo","Refuerza el carácter de la mandíbula."],
+          ["Cepillo (flat top)","Acompaña las líneas rectas del rostro."],
+          ["Side part clásico","Suaviza un poco los ángulos."],
+          ["Crop texturizado","Moderno y de poco mantenimiento."]],
+    avoid:"Cortes muy cuadrados y rígidos si quiere suavizar el rostro." },
+  alargado: { d:"Cara larga y angosta.",
+    cuts:[["Flequillo texturizado","Acorta visualmente el rostro."],
+          ["Lados medios con poco volumen arriba","Evita sumar altura."],
+          ["Corte César","Flequillo corto y recto que equilibra el largo."],
+          ["Medio largo con ondas","Da ancho a los lados."]],
+    avoid:"Pompadour alto y fades muy altos con mucha altura arriba." },
+  corazon: { d:"Frente ancha y mandíbula más fina.",
+    cuts:[["Flequillo lateral","Reduce la amplitud de la frente."],
+          ["Medio largo con textura","Da volumen a la zona de la mandíbula."],
+          ["Fade bajo con textura arriba","Equilibra sin exponer la frente."],
+          ["Crop con flequillo","Cubre parte de la frente y se ve actual."]],
+    avoid:"Lados rapados muy altos y exceso de volumen arriba." },
+  diamante: { d:"Pómulos prominentes, frente y mandíbula más angostas.",
+    cuts:[["Flequillo texturizado hacia adelante","Suaviza los pómulos y da ancho a la frente."],
+          ["Quiff suave","Equilibra con volumen moderado."],
+          ["Crop con lados medios","Evita que los pómulos se vean más anchos."],
+          ["Side swept","Estiliza y rellena la frente."]],
+    avoid:"Peinados totalmente hacia atrás con lados muy cortos." },
+  triangular: { d:"Mandíbula más ancha que la frente.",
+    cuts:[["Pompadour o quiff","El volumen arriba equilibra la mandíbula."],
+          ["Fade medio-alto con textura","Estiliza los lados y da altura."],
+          ["Texturizado hacia arriba","Suma anchura en la parte alta."],
+          ["Flequillo levantado","Abre la frente y balancea."]],
+    avoid:"Volumen en los lados y cortes planos arriba." }
+};
+const NOMBRES = { ovalado:"ovalado", redondo:"redondo", cuadrado:"cuadrado", alargado:"alargado", corazon:"corazón", diamante:"diamante", triangular:"triangular" };
+
+const HAIR = {
+  liso:"Cabello liso: se luce en pompadour, side part y flequillos definidos. Pomada o cera para dar textura.",
+  ondulado:"Cabello ondulado: aprovecha la onda natural con cortes texturizados o medio largos y fade en los lados.",
+  rizado:"Cabello rizado: deja más largo arriba y haz fade o taper en los lados. Evita la navaja arriba y usa crema para rizos.",
+  crespo:"Cabello crespo: va muy bien high top, taper o fade con diseño. Mantén la hidratación y marca bien los bordes."
+};
+const DENS = {
+  entradas:"Con entradas: evita flequillos pesados o peinar todo hacia atrás. Prefiere crop, textura hacia adelante y lados más cortos.",
+  poco:"Poco cabello arriba: lados cortos y arriba corto o medio con textura. El contraste fuerte entre lados y arriba lo deja más a la vista."
+};
+const HEAD = {
+  redonda:"Cabeza redonda: sube el volumen arriba y usa un fade que afine los lados.",
+  alargada:"Cabeza alargada: evita demasiada altura arriba y deja algo de volumen en los lados y la nuca.",
+  plana:"Nuca plana: deja algo de largo atrás para rellenar y evita el fade muy corto en la nuca.",
+  angulosa:"Cabeza angulosa: aguanta muy bien los cortes rapados; fade bajo o buzz se ven bien."
+};
+
+/* ---------- Detección facial ---------- */
+let landmarker = null;
+async function getLandmarker(){
+  if (landmarker) return landmarker;
+  const fileset = await FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VER}/wasm`);
+  landmarker = await FaceLandmarker.createFromOptions(fileset, {
+    baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task" },
+    runningMode:"IMAGE", numFaces:1
+  });
+  return landmarker;
+}
+
+function classify(lm, W, H){
+  const d = (a,b) => Math.hypot((lm[a].x-lm[b].x)*W, (lm[a].y-lm[b].y)*H);
+  const L = d(10,152), cheek = d(234,454), jaw = d(172,397), fore = d(54,284);
+  const ratio = L/cheek, jr = jaw/cheek, fr = fore/cheek;
+  const left = Math.abs(lm[1].x-lm[234].x), right = Math.abs(lm[454].x-lm[1].x);
+  const turned = Math.min(left,right)/Math.max(left,right) < 0.75;
+  let shape;
+  if (ratio >= 1.42) shape = "alargado";
+  else if (fr - jr >= 0.07) shape = "corazon";
+  else if (jr - fr >= 0.07) shape = "triangular";
+  else if (fr < 0.76 && jr < 0.76) shape = "diamante";
+  else if (jr >= 0.84 && ratio < 1.3) shape = "cuadrado";
+  else if (ratio < 1.25) shape = "redondo";
+  else shape = "ovalado";
+  return { shape, ratio, jr, fr, turned };
+}
+
+function draw(img, lm){
+  const cv = $("cv"), ctx = cv.getContext("2d");
+  const max = 900, s = Math.min(1, max/Math.max(img.naturalWidth, img.naturalHeight));
+  cv.width = Math.round(img.naturalWidth*s); cv.height = Math.round(img.naturalHeight*s);
+  ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  if (!lm) return;
+  ctx.fillStyle = "#C8283A";
+  [10,152,234,454,172,397,54,284].forEach(i => {
+    ctx.beginPath(); ctx.arc(lm[i].x*cv.width, lm[i].y*cv.height, Math.max(4, cv.width/130), 0, 7); ctx.fill();
+  });
+  $("stage").style.display = "block";
+}
+
+let current = { shape:null, info:null };
+
+async function onFile(e){
+  const f = e.target.files[0]; if (!f) return;
+  $("res").classList.add("hidden");
+  const img = new Image();
+  img.src = URL.createObjectURL(f);
+  try { await img.decode(); } catch { status("No se pudo abrir la imagen.", true); return; }
+  draw(img, null); $("stage").style.display = "block";
+  status("Cargando detector facial…"); busy(true);
+  try {
+    const lmk = await getLandmarker();
+    status("Analizando rostro…");
+    const r = lmk.detect(img);
+    if (!r.faceLandmarks.length){ status("No se detectó un rostro. Prueba con una foto de frente y con mejor luz.", true); busy(false); return; }
+    const lm = r.faceLandmarks[0];
+    draw(img, lm);
+    const info = classify(lm, img.naturalWidth, img.naturalHeight);
+    current = { shape: info.shape, info };
+    status(info.turned ? "Rostro algo girado: el resultado puede variar. Mejor una foto de frente." : "Listo. Revisa la recomendación abajo.", info.turned);
+    render();
+  } catch (err){
+    console.error(err);
+    status("No se pudo cargar el detector. Revisa tu conexión e inténtalo de nuevo.", true);
+  }
+  busy(false);
+  e.target.value = "";
+}
+
+function render(){
+  const { shape, info } = current; if (!shape) return;
+  const data = CORTES[shape];
+  $("res").classList.remove("hidden");
+  $("shapeName").textContent = "Rostro " + NOMBRES[shape];
+  $("shapeMeta").textContent = data.d + (info ? ` (largo/ancho ${info.ratio.toFixed(2)})` : "");
+  $("chips").innerHTML = Object.keys(CORTES).map(k =>
+    `<button type="button" class="chip" data-k="${k}" aria-pressed="${k===shape}">${NOMBRES[k]}</button>`).join("");
+  $("cuts").innerHTML = data.cuts.map(([n,w]) => `<li><b>${n}</b>${w}</li>`).join("");
+  const tips = [HAIR[$("hair").value], DENS[$("dens").value], HEAD[$("head").value]].filter(Boolean);
+  $("tips").innerHTML = tips.map(t => `<p>${t}</p>`).join("");
+  $("avoid").innerHTML = `<p><b>Evitar:</b> ${data.avoid}</p>`;
+}
+
+$("cam").addEventListener("change", onFile);
+$("gal").addEventListener("change", onFile);
+["hair","dens","head"].forEach(id => $(id).addEventListener("change", render));
+$("chips").addEventListener("click", e => {
+  const k = e.target.dataset.k; if (!k) return;
+  current.shape = k; render();
+});
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(()=>{});
+</script>
+</body>
+</html>
